@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP Geolocation Data</title>
+</head>
+<body>
+  <h1>IP Geolocation Data</h1>
+  <div id="data"></div>
+
+  <script>
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/data');
+        const data = await response.json();
+        const dataDiv = document.getElementById('data');
+        dataDiv.innerHTML = `
+          <p><strong>IP:</strong> ${data.ip}</p>
+          <p><strong>Continent:</strong> ${data.continent_name}</p>
+          <p><strong>Country:</strong> ${data.country_name}</p>
+          <p><strong>Region:</strong> ${data.region_name}</p>
+          <p><strong>City:</strong> ${data.city}</p>
+          <p><strong>Latitude:</strong> ${data.latitude}</p>
+          <p><strong>Longitude:</strong> ${data.longitude}</p>
+          <p><strong>Currency Code:</strong> ${data.currency_code}</p>
+          <p><strong>Currency Name:</strong> ${data.currency_name}</p>
+          <p><strong>Currency Symbol:</strong> ${data.currency_symbol}</p>
+          <p><strong>Time Zone:</strong> ${data.time_zone_name}</p>
+          <p><strong>Current Time:</strong> ${data.current_time}</p>
+          <p><strong>Daylight Saving:</strong> ${data.is_daylight_saving}</p>
+        `;
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>

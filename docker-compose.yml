@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      bash -c "
+      rm -f tmp/pids/server.pid &&
+      bundle exec rails db:reset && bundle exec rails db:migrate &&
+      bundle exec rails s -e development -p 8000 -b '0.0.0.0'
+      "
+    volumes:
+      - ./:/app
+    ports:
+      - "8000:8000"
+    environment:
+      IPSTACK_API_KEY: aa920baed4cb4ca292608250dae926ca
+    depends_on:
+      db:
+        condition: service_healthy
+  
+  db:
+    image: mysql:latest
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data:

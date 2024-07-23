@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IP Geolocation Data</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding-left: 10%;
+        padding-right: 10%;
+      }
+      h1 {
+        color: #333;
+      }
+      form {
+        margin-bottom: 20px;
+      }
+      form input {
+        margin: 5px;
+      }
+      #data p {
+        margin: 5px 0;
+      }
+      strong {
+        color: #555;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px;
+      }
+      tr:nth-child(even) {
+        background-color: #d6eeee;
+      }
+      th {
+        background-color: #d6eeee;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="error-message" style="padding: 10px; color: red;"></div>
+    <h1>IP Geolocation Data</h1>
+    <h1>Get IP Geolocation Data</h1>
+    <form id="search-form">
+      <label for="ip">IP:</label>
+      <input type="text" id="ip" name="ip" />
+      <label for="url">URL:</label>
+      <input type="text" id="url" name="url" />
+      <button type="submit">Submit</button>
+    </form>
+
+    <div id="data"></div>
+    <div id="submit-button"></div>
+
+    <h1>List of all the IP Geolocation Data</h1>
+    <table>
+      <thead>
+        <th>ip_address</th>
+        <th>data</th>
+        <th>Actions</th>
+      </thead>
+      <tbody id="ip-table-body"></tbody>
+    </table>
+
+    <script>
+      const token = '====TOKEN====';
+      async function fetchIps() {
+        try {
+          const response = await fetch(
+            "http://localhost:8000/api/v1/ip_geolocations",{
+              method : 'GET',
+              headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+              }
+            }
+          );
+          const responseData = await response.json();
+          const tableBody = document.getElementById("ip-table-body");
+          tableBody.innerHTML = "";
+
+          responseData.forEach((rowData) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+            <td>${rowData.ip_address}</td>
+            <td>
+              <textarea name="json-data" id="json-data-${rowData.id}" rows="10" cols="100">${JSON.stringify(rowData.data, null, 2)}</textarea>
+            </td>
+            
+            <td>
+              <button id="update-button" onclick="updateEntry(${
+                rowData.id
+              })">Update</button>
+              <button id="delete-button" onclick="deleteEntry(${
+                rowData.id
+              })">Delete</button>
+            </td>
+          `;
+            tableBody.appendChild(row);
+          });
+        } catch (error) {
+          console.error("Error fetching IPs:", error);
+        }
+      }
+
+      async function deleteEntry(id) {
+        try {
+          const response = await fetch(
+            `http://localhost:8000/api/v1/ip_geolocations/${id}`,
+            {
+              method: "DELETE",
+              headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+
+          fetchIps();
+        } catch (error) {
+          console.error("Error deleting IP:", error);
+        }
+      }
+
+      async function updateEntry(id) {
+        try {
+          const ipAddress = document.getElementById(
+            `json-data-${id}`
+          ).value;
+
+          const response = await fetch(
+            `http://localhost:8000/api/v1/ip_geolocations/${id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ ip_geolocation_params: {data: JSON.parse(ipAddress)} }),
+            }
+          );
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }else{
+            alert(data.message);
+          }
+
+          fetchIps();
+        } catch (error) {
+          document.getElementById("error-message").innerHTML = error
+          console.error("Error updating IP:", error);
+        }
+      }
+      fetchIps();
+
+      let dataCache = null; // Global variable to store fetched data
+
+      async function fetchData() {
+        try {
+          const ip = document.getElementById("ip").value;
+          const response = await fetch(
+            `http://localhost:8000/api/v1/ip_geolocations/search?ip_address=${ip}`,{
+              method: 'GET',
+              headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+          );
+          const data = await response.json();
+          dataCache = data; // Store the data in the global variable
+
+          const dataDiv = document.getElementById("data");
+          const submitButton = document.getElementById("submit-button");
+
+          if (response.ok) {
+            dataDiv.textContent = JSON.stringify(data, null, 2);
+            submitButton.innerHTML = `<button id="save-button">Save to Database</button>`;
+            document
+              .getElementById("save-button")
+              .addEventListener("click", saveToDatabase);
+          } else if (response.status == 400) {
+            alert(response.status + ":" + data.error);
+          } else {
+            dataDiv.innerHTML = `<p>${data.error}</p>`;
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      }
+
+      async function saveToDatabase() {
+        if (!dataCache) {
+          alert("No data to save");
+          return;
+        }
+
+        try {
+          const saveResponse = await fetch(
+            "http://localhost:8000/api/v1/ip_geolocations",
+            {
+              method: "POST",
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ip_geolocation_params: { ip_address: dataCache["ip"] },
+              }),
+            }
+          );
+
+          const data = await saveResponse.json();
+          if (saveResponse.ok) {
+            alert(data.message);
+          } else if (saveResponse.status == 400) {
+            alert(saveResponse.status + ":" + data.error);
+          } else {
+            alert("Error saving data");
+          }
+        } catch (error) {
+          console.error("Error saving data:", error);
+        }
+      }
+
+      document
+        .getElementById("search-form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          fetchData();
+        });
+    </script>
+  </body>
+</html>

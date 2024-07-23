@@ -1,0 +1,9 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  ip_address: 1.1.1.1
+  data: {}
+
+two:
+  ip_address: 2.2.2.2
+  data: {}
